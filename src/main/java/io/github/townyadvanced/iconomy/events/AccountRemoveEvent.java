@@ -1,43 +1,30 @@
 package io.github.townyadvanced.iconomy.events;
 
-import java.util.logging.Logger;
+import com.hypixel.hytale.event.ICancellable;
+import com.hypixel.hytale.event.IEvent;
 
-import org.bukkit.Bukkit;
-import org.bukkit.event.Event;
-import org.bukkit.event.HandlerList;
+public class AccountRemoveEvent implements ICancellable, IEvent<Void> {
 
-import io.github.townyadvanced.iconomy.iConomyUnlocked;
+  private final String account;
+  private boolean cancelled = false;
 
-public class AccountRemoveEvent extends Event {
+  public AccountRemoveEvent(final String account) {
 
-	private final String account;
-	private boolean cancelled = false;
-	private static final HandlerList handlers = new HandlerList();
+    this.account = account;
+  }
 
-	Logger log = iConomyUnlocked.getPlugin().getLogger();
+  public String getAccountName() {
 
-	public AccountRemoveEvent(String account) {
-		super(!Bukkit.isPrimaryThread());
-		this.account = account;
-	}
+    return this.account;
+  }
 
-	public String getAccountName() {
-		return this.account;
-	}
+  public boolean isCancelled() {
 
-	public boolean isCancelled() {
-		return this.cancelled;
-	}
+    return this.cancelled;
+  }
 
-	public void setCancelled(boolean cancelled) {
-		this.cancelled = cancelled;
-	}
+  public void setCancelled(final boolean cancelled) {
 
-	public HandlerList getHandlers() {
-		return handlers;
-	}
-
-	public static HandlerList getHandlerList() {
-		return handlers;
-	}
+    this.cancelled = cancelled;
+  }
 }

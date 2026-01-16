@@ -1,48 +1,36 @@
 package io.github.townyadvanced.iconomy.events;
 
-import org.bukkit.Bukkit;
-import org.bukkit.event.Event;
-import org.bukkit.event.HandlerList;
-
-import io.github.townyadvanced.iconomy.iConomyUnlocked;
+import com.hypixel.hytale.event.ICancellable;
+import com.hypixel.hytale.event.IEvent;
 import io.github.townyadvanced.iconomy.system.Holdings;
 
-import java.util.logging.Logger;
+public class AccountResetEvent implements ICancellable, IEvent<Void> {
 
-public class AccountResetEvent extends Event {
+  private final Holdings account;
+  private boolean cancelled = false;
 
-	private final Holdings account;
-	private boolean cancelled = false;
-	private static final HandlerList handlers = new HandlerList();
+  public AccountResetEvent(final Holdings account) {
 
-	Logger log = iConomyUnlocked.getPlugin().getLogger();
+    this.account = account;
+  }
 
-	public AccountResetEvent(Holdings account) {
-		super(!Bukkit.isPrimaryThread());
-		this.account = account;
-	}
+  public String getAccountName() {
 
-	public String getAccountName() {
-		return this.account.getName();
-	}
+    return this.account.getName();
+  }
 
-	public Holdings getAccount() {
-		return account;
-	}
+  public Holdings getAccount() {
 
-	public boolean isCancelled() {
-		return this.cancelled;
-	}
+    return account;
+  }
 
-	public void setCancelled(boolean cancelled) {
-		this.cancelled = cancelled;
-	}
+  public boolean isCancelled() {
 
-	public HandlerList getHandlers() {
-		return handlers;
-	}
+    return this.cancelled;
+  }
 
-	public static HandlerList getHandlerList() {
-		return handlers;
-	}
+  public void setCancelled(final boolean cancelled) {
+
+    this.cancelled = cancelled;
+  }
 }

@@ -1,21 +1,27 @@
 package io.github.townyadvanced.iconomy.util;
 
-import org.bukkit.command.CommandSender;
-import org.bukkit.entity.Player;
+import com.hypixel.hytale.server.core.command.system.CommandContext;
+import com.hypixel.hytale.server.core.entity.entities.Player;
+
+import javax.annotation.Nonnull;
 
 public class Permissions {
 
-	public static boolean hasPermission(CommandSender sender, String node) {
-		return hasPermission(sender, node, false);
-	}
+  public static boolean hasPermission(@Nonnull final CommandContext ctx, final String node) {
 
-	public static boolean hasPermission(CommandSender sender, String node, boolean silent) {
-        if (sender instanceof Player player) {
-            boolean hasPermission = player.hasPermission(node);
-            if (!hasPermission && !silent)
-                Messaging.sendErrorMessage(player, "You do not have the permission to use that command.");
-            return hasPermission;
-        }
-        return true;
-	}
+    return hasPermission(ctx, node, false);
+  }
+
+  public static boolean hasPermission(@Nonnull final CommandContext ctx, final String node, final boolean silent) {
+
+    if(ctx.sender() instanceof final Player player) {
+
+      final boolean hasPermission = player.hasPermission(node);
+      if(!hasPermission && !silent) {
+        Messaging.sendErrorMessage(ctx, "You do not have the permission to use that command.");
+      }
+      return hasPermission;
+    }
+    return true;
+  }
 }

@@ -1,0 +1,22 @@
+{
+    "Group": "${plugin_group}",
+    "Name": "${plugin_name}",
+    "Version": "${plugin_version}",
+    "Description": "${plugin_description}",
+    "Authors": [
+        {
+            "Name": "[${plugin_author}, Nijikokun, ElgarL, LlmDl]"
+        }
+    ],
+    "Website": "${plugin_website}",
+    "ServerVersion": "${server_version}",
+    "Dependencies": {
+        "Zoltus:TinyMessage": "*"
+    },
+    "OptionalDependencies": {
+        "TheNewEconomy:VaultUnlocked": "*"
+    },
+    "DisabledByDefault": false,
+    "IncludesAssetPack": true,
+    "Main": "${plugin_main_entrypoint}"
+}

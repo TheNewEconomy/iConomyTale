@@ -1,193 +1,166 @@
 package io.github.townyadvanced.iconomy;
 
-import java.util.List;
-import java.util.function.Function;
-
-import org.bukkit.Bukkit;
-import org.bukkit.command.PluginCommand;
-import org.bukkit.plugin.Plugin;
-import org.bukkit.plugin.ServicePriority;
-import org.bukkit.plugin.ServicesManager;
-import org.bukkit.plugin.java.JavaPlugin;
-import org.jetbrains.annotations.NotNull;
-
+import com.hypixel.hytale.common.plugin.PluginIdentifier;
+import com.hypixel.hytale.common.semver.SemverRange;
+import com.hypixel.hytale.logger.HytaleLogger;
+import com.hypixel.hytale.server.core.HytaleServer;
+import com.hypixel.hytale.server.core.event.events.player.PlayerReadyEvent;
+import com.hypixel.hytale.server.core.plugin.JavaPlugin;
+import com.hypixel.hytale.server.core.plugin.JavaPluginInit;
 import io.github.townyadvanced.iconomy.commands.MoneyCommand;
-import io.github.townyadvanced.iconomy.listener.PlayerJoinListener;
-import io.github.townyadvanced.iconomy.providers.VaultEconomy;
+import io.github.townyadvanced.iconomy.listener.PlayerReadyListener;
 import io.github.townyadvanced.iconomy.providers.VaultUnlockedEconomy;
-import io.github.townyadvanced.iconomy.settings.Settings;
 import io.github.townyadvanced.iconomy.settings.LangStrings;
+import io.github.townyadvanced.iconomy.settings.Settings;
 import io.github.townyadvanced.iconomy.system.Accounts;
 import io.github.townyadvanced.iconomy.system.BackEnd;
 import io.github.townyadvanced.iconomy.system.Transactions;
-import net.milkbowl.vault2.economy.Economy;
+import net.cfh.vault.VaultUnlockedServicesManager;
+import org.jetbrains.annotations.NotNull;
+
+import javax.annotation.Nonnull;
+import java.util.List;
 
 public class iConomyUnlocked extends JavaPlugin {
 
-	private static iConomyUnlocked plugin;
-	private static BackEnd backend = null;
-	private static Accounts accounts = null;
-	private static Transactions transactions = null;
+  private static final HytaleLogger LOGGER = HytaleLogger.forEnclosingClass();
+  private static iConomyUnlocked plugin;
+  private static BackEnd backend = null;
+  private static Accounts accounts = null;
+  private static Transactions transactions = null;
+  private static iConomyUnlocked instance;
 
-	public iConomyUnlocked() {
-		plugin = this;
-	}
 
-	@Override
-	public void onLoad() {
-		if (!registerEconomy()) {
-			getLogger().severe("Neither Vault or VaultUnlocked were found. Please download Vault or VaultUnlocked to use iConomyUnlocked!");
-			disableWithMessage("Could not register with VaultUnlocked!");
-			return;
-		}
-	}
+  public iConomyUnlocked(@Nonnull final JavaPluginInit init) {
 
-	@Override
-	public void onEnable() {
-		try {
-			if (!testPaper()) {
-				disableWithMessage("iConomyUnlocked no longer supports Spigot/CraftBukkit, and now requires Paper to run. See https://papermc.io for more information about Paper.");
-				return;
-			}
-			
-			loadConfig();
-			loadLangFile();
+    super(init);
+    LOGGER.atInfo().log("Hello from " + this.getName() + " version " + this.getManifest().getVersion().toString());
+    instance = this;
 
-			backend = new BackEnd();
-			backend.setupAccountTable();
-			List<String> tablesUpdated = backend.updateTables();
+  }
 
-			accounts = new Accounts();
+  public static iConomyUnlocked getPlugin() {
 
-			if (!tablesUpdated.isEmpty())
-				accounts.updateAccountsForNewTables(tablesUpdated);
+    return plugin;
+  }
 
-			transactions = new Transactions();
-			backend.setupTransactionTable();
+  public static BackEnd getBackEnd() {
 
-			registerCommands();
-			registerListeners();
-		} catch (Exception e) {
-			disableWithMessage(e.getMessage());
-			return;
-		}
-	}
+    return backend;
+  }
 
-	private boolean testPaper() {
-		return classExists("io.papermc.paper.threadedregions.RegionizedServer") || classExists("io.papermc.paper.configuration.Configuration");
-	}
+  public static Accounts getAccounts() {
 
-	public void loadConfig() throws Exception {
-		Settings.loadConfig(getDataFolder().toPath().resolve("config.yml"), getVersion());
-	}
+    return accounts;
+  }
 
-	public void loadLangFile() throws Exception {
-		LangStrings.loadLangFile(getDataFolder().toPath().resolve("lang.yml"));
-	}
+  public static Transactions getTransactions() {
 
-	public String getVersion() {
-		return this.getDescription().getVersion();
-	}
-	
-	/**
-	 * Register as a ServiceProvider, and with Vault and/or VaultUnlocked.
-	 * 
-	 * @return true if successful.
-	 */
-	private boolean registerEconomy() {
-		final ServicesManager sm = this.getServer().getServicesManager();
+    return transactions;
+  }
 
-		boolean vault2hooked = false;
-		boolean vault1hooked = false;
-		if (vaultUnlockedPresent()) {
-			Class<Economy> vaultUnlocked = net.milkbowl.vault2.economy.Economy.class;
-			sm.register(vaultUnlocked, new VaultUnlockedEconomy(this), this, ServicePriority.Highest);
-			getLogger().info("Registered VaultUnlocked interface.");
-			vault2hooked = getServer().getServicesManager().getRegistration(vaultUnlocked) != null;
+  @Override
+  protected void setup() {
 
-			@SuppressWarnings("deprecation")
-			Class<net.milkbowl.vault.economy.Economy> vault = net.milkbowl.vault.economy.Economy.class;
-			sm.register(vault, new VaultEconomy(this), this, ServicePriority.Highest);
-			getLogger().info("Registered Vault interface.");
-			vault1hooked = getServer().getServicesManager().getRegistration(vault) != null;
-		}
+    LOGGER.atInfo().log("Setting up plugin " + this.getName());
 
-		if (vaultPresent()) {
-			@SuppressWarnings("deprecation")
-			Class<net.milkbowl.vault.economy.Economy> vault = net.milkbowl.vault.economy.Economy.class;
-			sm.register(vault, new VaultEconomy(this), this, ServicePriority.Highest);
-			getLogger().info("Registered Vault interface.");
-			vault1hooked = getServer().getServicesManager().getRegistration(vault) != null;
-		}
+    registerEconomy();
 
-		return vault1hooked || vault2hooked;
-	}
+    try {
 
-	private static Function<Plugin, Boolean> vaultVersionFun = (vault) -> vault.getDescription().getVersion().startsWith("1");
+      loadConfig();
+      loadLangFile();
 
-	private static boolean vaultUnlockedPresent() {
-		Plugin vault = plugin.getServer().getPluginManager().getPlugin("Vault");
-		return vault != null && !vaultVersionFun.apply(vault);
-	}
+      backend = new BackEnd();
+      backend.setupAccountTable();
+      final List<String> tablesUpdated = backend.updateTables();
 
-	private static boolean vaultPresent() {
-		Plugin vault = plugin.getServer().getPluginManager().getPlugin("Vault");
-		return vault != null && vaultVersionFun.apply(vault);
-	}
+      accounts = new Accounts();
 
-	private void registerCommands() {
-		MoneyCommand cmd = new MoneyCommand();
-		PluginCommand command = getCommand("money");
-		command.setExecutor(cmd);
-		command.setTabCompleter(cmd);
-	}
+      if(!tablesUpdated.isEmpty()) {
+        accounts.updateAccountsForNewTables(tablesUpdated);
+      }
 
-	private void registerListeners() {
-		Bukkit.getPluginManager().registerEvents(new PlayerJoinListener(), plugin);
-	}
+      transactions = new Transactions();
+      backend.setupTransactionTable();
 
-	private void disableWithMessage(String message) {
-		getLogger().severe(message);
-		getLogger().severe("Disabling iConomyUnlocked...");
-		Bukkit.getPluginManager().disablePlugin(this);
-	}
+      registerCommands();
+      registerListeners();
+    } catch(final Exception e) {
+      disableWithMessage(e.getMessage());
+    }
 
-	@Override
-	public void onDisable() {
-		try {
-			backend.connectionPool().dispose();
-			getLogger().info("Plugin disabled.");
-		} catch (Exception e) {
-			getLogger().severe("Plugin disabled.");
-		} finally {
-			transactions = null;
-			accounts = null;
-			backend = null;
-		}
-	}
+    //TODO: Update checking.
+  }
 
-	public static iConomyUnlocked getPlugin() {
-		return plugin;
-	}
+  public void loadConfig() throws Exception {
 
-	public static BackEnd getBackEnd() {
-		return backend;
-	}
+    Settings.loadConfig(getDataDirectory().resolve("config.yml"), getVersion());
+  }
 
-	public static Accounts getAccounts() {
-		return accounts;
-	}
+  public void loadLangFile() throws Exception {
 
-	public static Transactions getTransactions() {
-		return transactions;
-	}
+    LangStrings.loadLangFile(getDataDirectory().resolve("lang.yml"));
+  }
 
-	private boolean classExists(@NotNull String className) {
-		try {
-			Class.forName(className);
-			return true;
-		} catch (ClassNotFoundException e) {
-			return false;
-		}
-	}
+  public String getVersion() {
+
+    return this.getManifest().getVersion().toString();
+  }
+
+  /**
+   * Registers economy support for the iConomyUnlocked plugin, specifically enabling or disabling
+   * support for the VaultUnlocked plugin based on its availability.
+   *
+   * This method checks if the VaultUnlocked plugin is present using the plugin manager. If the
+   * plugin is available, VaultUnlocked support is enabled by registering it with the
+   * VaultUnlockedServicesManager. Otherwise, support is disabled, and a log message is recorded.
+   *
+   * Logging is used to indicate whether support has been enabled or disabled.
+   */
+  private void registerEconomy() {
+
+    if(HytaleServer.get().getPluginManager().hasPlugin(PluginIdentifier.fromString("TheNewEconomy:VaultUnlocked"), SemverRange.WILDCARD)) {
+      LOGGER.atInfo().log("VaultUnlocked is installed, enabling VaultUnlocked support.");
+
+      VaultUnlockedServicesManager.get().economy(new VaultUnlockedEconomy(this));
+    } else {
+      LOGGER.atInfo().log("VaultUnlocked is not installed, disabling VaultUnlocked support.");
+    }
+  }
+
+  private void registerCommands() {
+
+    final MoneyCommand cmd = new MoneyCommand();
+    final PluginCommand command = getCommand("money");
+    command.setExecutor(cmd);
+    command.setTabCompleter(cmd);
+  }
+
+  private void registerListeners() {
+
+    this.getEventRegistry().registerGlobal(PlayerReadyEvent.class, PlayerReadyListener::onEvent);
+  }
+
+  private void disableWithMessage(final String message) {
+
+    getLogger().atSevere().log(message);
+    getLogger().atSevere().log("Disabling iConomyUnlocked...");
+    super.shutdown0(true);
+  }
+
+  @Override
+  public void shutdown() {
+
+    try {
+      backend.connectionPool().dispose();
+      getLogger().atInfo().log("Plugin disabled.");
+    } catch(final Exception e) {
+      getLogger().atSevere().log("Plugin disabled.");
+    } finally {
+      transactions = null;
+      accounts = null;
+      backend = null;
+    }
+  }
 }
